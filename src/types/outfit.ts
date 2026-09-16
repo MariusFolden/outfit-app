@@ -1,13 +1,28 @@
 export const DEFAULT_CATEGORIES = ['Casual', 'School', 'Work', 'Party', 'Date', 'Formal', 'Gym', 'Vacation'] as const;
 
-export type Outfit = {
+export type Category = {
   id: string;
-  imageUri: string;
-  name?: string;
-  categories: string[];
-  notes?: string;
-  isFavorite: boolean;
+  name: string;
   createdAt: string;
 };
 
-export type OutfitDraft = Omit<Outfit, 'id' | 'createdAt'>;
+export type Outfit = {
+  id: string;
+  photoPath: string;
+  imageUri: string;
+  name?: string;
+  categories: Category[];
+  notes?: string;
+  isFavorite: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type OutfitDraft = {
+  imageUri?: string;
+  imageMimeType?: string | null;
+  name?: string;
+  categoryIds: string[];
+  notes?: string;
+  isFavorite: boolean;
+};
