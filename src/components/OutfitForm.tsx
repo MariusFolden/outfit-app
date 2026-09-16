@@ -1,35 +1,46 @@
 import * as ImagePicker from 'expo-image-picker';
 import { useState } from 'react';
-import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useOutfits } from '../data/outfitStore';
 import { OutfitDraft } from '../types/outfit';
 import { colors, spacing } from '../theme';
+import { OutfitImage } from './OutfitImage';
 import { Chip, Field, PrimaryButton, SectionLabel } from './ui';
 
 type Props = { initial?: OutfitDraft; onSave: (draft: OutfitDraft) => Promise<void>; buttonLabel: string; allowPhotoChange?: boolean };
 
 export function OutfitForm({ initial, onSave, buttonLabel, allowPhotoChange = true }: Props) {
-  const { categories, addCategory, isSaving } = useOutfits();
+  const { categories, addCategory, isSaving, saveStatus } = useOutfits();
   const [imageUri, setImageUri] = useState(initial?.imageUri ?? '');
   const [imageMimeType, setImageMimeType] = useState(initial?.imageMimeType ?? null);
+  const [imageWidth, setImageWidth] = useState(initial?.imageWidth);
+  const [imageHeight, setImageHeight] = useState(initial?.imageHeight);
   const [name, setName] = useState(initial?.name ?? '');
   const [selected, setSelected] = useState(initial?.categoryIds ?? []);
   const [notes, setNotes] = useState(initial?.notes ?? '');
   const [isFavorite, setIsFavorite] = useState(initial?.isFavorite ?? false);
   const [newCategory, setNewCategory] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const useSelectedAsset = (asset: ImagePicker.ImagePickerAsset) => {
+    setImageUri(asset.uri);
+    setImageMimeType(asset.mimeType ?? null);
+    setImageWidth(asset.width);
+    setImageHeight(asset.height);
+  };
 
   const chooseFromLibrary = async () => {
     try {
-      const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, quality: 0.8 });
-      if (!result.canceled) { setImageUri(result.assets[0].uri); setImageMimeType(result.assets[0].mimeType ?? null); }
+      const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true });
+      if (!result.canceled) useSelectedAsset(result.assets[0]);
     } catch { Alert.alert('Could not open photos', 'Please try choosing a photo again.'); }
   };
   const takePhoto = async () => {
     try {
       const permission = await ImagePicker.requestCameraPermissionsAsync();
       if (!permission.granted) { Alert.alert('Permission needed', 'Allow access to your camera to add an outfit photo.'); return; }
-      const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], allowsEditing: true, quality: 0.8 });
-      if (!result.canceled) { setImageUri(result.assets[0].uri); setImageMimeType(result.assets[0].mimeType ?? null); }
+      const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], allowsEditing: true });
+      if (!result.canceled) useSelectedAsset(result.assets[0]);
     } catch { Alert.alert('Could not open camera', 'Please try taking a photo again.'); }
   };
   const toggleCategory = (categoryId: string) => setSelected((current) => current.includes(categoryId) ? current.filter((item) => item !== categoryId) : [...current, categoryId]);
@@ -41,20 +52,25 @@ export function OutfitForm({ initial, onSave, buttonLabel, allowPhotoChange = tr
     } catch (error) { Alert.alert('Could not create category', error instanceof Error ? error.message : 'Please try again.'); }
   };
   const save = async () => {
+    if (isSubmitting || isSaving) return;
     if (allowPhotoChange && !imageUri) { Alert.alert('Add a photo', 'Choose a photo or take one before saving this outfit.'); return; }
-    try { await onSave({ imageUri, imageMimeType, name: name.trim() || undefined, categoryIds: selected, notes: notes.trim() || undefined, isFavorite }); }
+    setIsSubmitting(true);
+    try { await onSave({ imageUri, imageMimeType, imageWidth, imageHeight, name: name.trim() || undefined, categoryIds: selected, notes: notes.trim() || undefined, isFavorite }); }
     catch (error) { Alert.alert('Could not save outfit', error instanceof Error ? error.message : 'Please try again.'); }
+    finally { setIsSubmitting(false); }
   };
+
+  const isBusy = isSaving || isSubmitting;
 
   return <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
     <SectionLabel>Outfit photo</SectionLabel>
-    {imageUri ? <Image source={{ uri: imageUri }} style={styles.preview} /> : <View style={styles.photoEmpty}><Text style={styles.photoIcon}>*</Text><Text style={styles.photoTitle}>A look worth remembering</Text><Text style={styles.photoSub}>Choose a photo of a complete outfit.</Text></View>}
-    {allowPhotoChange ? <View style={styles.photoActions}><Pressable disabled={isSaving} onPress={chooseFromLibrary} style={styles.photoAction}><Text style={styles.photoActionText}>Choose photo</Text></Pressable><Pressable disabled={isSaving} onPress={takePhoto} style={styles.photoAction}><Text style={styles.photoActionText}>Take photo</Text></Pressable></View> : <Text style={styles.photoNote}>This photo will stay as saved.</Text>}
+    {imageUri ? <OutfitImage uri={imageUri} style={styles.preview} /> : <View style={styles.photoEmpty}><Text style={styles.photoIcon}>*</Text><Text style={styles.photoTitle}>A look worth remembering</Text><Text style={styles.photoSub}>Choose a photo of a complete outfit.</Text></View>}
+    {allowPhotoChange ? <View style={styles.photoActions}><Pressable disabled={isBusy} onPress={chooseFromLibrary} style={styles.photoAction}><Text style={styles.photoActionText}>Choose photo</Text></Pressable><Pressable disabled={isBusy} onPress={takePhoto} style={styles.photoAction}><Text style={styles.photoActionText}>Take photo</Text></Pressable></View> : <Text style={styles.photoNote}>This photo will stay as saved.</Text>}
     <View style={styles.section}><SectionLabel>Outfit name <Text style={styles.optional}>optional</Text></SectionLabel><Field value={name} onChangeText={setName} placeholder="e.g. Sunday in the city" /></View>
     <View style={styles.section}><SectionLabel>Categories</SectionLabel><View style={styles.chips}>{categories.map((category) => <Chip key={category.id} label={category.name} selected={selected.includes(category.id)} onPress={() => toggleCategory(category.id)} />)}</View><View style={styles.newCategory}><Field value={newCategory} onChangeText={setNewCategory} placeholder="Create a category" /><Pressable disabled={isSaving} onPress={() => void createCategory()} style={styles.addCategory}><Text style={styles.addCategoryText}>Add</Text></Pressable></View></View>
     <View style={styles.section}><SectionLabel>Notes <Text style={styles.optional}>optional</Text></SectionLabel><Field multiline value={notes} onChangeText={setNotes} placeholder="A detail you want to remember..." /></View>
     <Pressable disabled={isSaving} onPress={() => setIsFavorite((current) => !current)} style={styles.favoriteRow}><Text style={styles.favoriteMark}>{isFavorite ? '♥' : '♡'}</Text><View><Text style={styles.favoriteTitle}>Favorite outfit</Text><Text style={styles.favoriteSub}>Keep this look close at hand.</Text></View></Pressable>
-    <PrimaryButton label={isSaving ? 'Saving...' : buttonLabel} disabled={isSaving} onPress={() => void save()} style={styles.save} />
+    <PrimaryButton label={isBusy ? saveStatus ?? 'Saving...' : buttonLabel} disabled={isBusy} onPress={() => void save()} style={styles.save} />
   </ScrollView>;
 }
 

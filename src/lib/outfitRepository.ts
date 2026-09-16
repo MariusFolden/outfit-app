@@ -31,7 +31,7 @@ export async function loadLibrary(userId: string): Promise<{ outfits: Outfit[]; 
   if (outfitsResult.error) throw databaseError(outfitsResult.error);
 
   const rows = (outfitsResult.data ?? []) as unknown as OutfitRow[];
-  const photoUrls = await createOutfitPhotoUrls(rows.map((row) => row.photo_path));
+  const photoUrls = await createOutfitPhotoUrls(userId, rows.map((row) => row.photo_path));
   return {
     categories: sortCategories((categoriesResult.data ?? []).map(mapCategory)),
     outfits: rows.map((row) => ({

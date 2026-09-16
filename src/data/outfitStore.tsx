@@ -1,7 +1,7 @@
 import * as Crypto from 'expo-crypto';
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { deleteOutfitRow, insertCategory, insertOutfit, insertOutfitCategories, loadLibrary, removeOutfitCategories, updateOutfitRow } from '../lib/outfitRepository';
-import { removeOutfitPhoto, uploadOutfitPhoto } from '../lib/outfitPhotos';
+import { clearOutfitPhotoUrlCache, removeOutfitPhoto, uploadOutfitPhoto } from '../lib/outfitPhotos';
 import { useAuth } from '../providers/AuthProvider';
 import { Category, Outfit, OutfitDraft } from '../types/outfit';
 
@@ -11,6 +11,7 @@ type OutfitStore = {
   isLoading: boolean;
   isRefreshing: boolean;
   isSaving: boolean;
+  saveStatus: string | null;
   error: string | null;
   refresh: () => Promise<void>;
   addOutfit: (draft: OutfitDraft) => Promise<Outfit>;
@@ -30,6 +31,7 @@ export function OutfitProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(Boolean(userId));
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const requestVersion = useRef(0);
 
@@ -57,6 +59,7 @@ export function OutfitProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     requestVersion.current += 1;
+    clearOutfitPhotoUrlCache();
     setOutfits([]);
     setCategories([]);
     setError(null);
@@ -96,8 +99,17 @@ export function OutfitProvider({ children }: { children: ReactNode }) {
     let outfitInserted = false;
     let outfitSaved = false;
     setIsSaving(true);
+    setSaveStatus('Preparing photo…');
     try {
-      photoPath = await uploadOutfitPhoto({ userId, outfitId: id, localUri: draft.imageUri, mimeType: draft.imageMimeType });
+      photoPath = await uploadOutfitPhoto({
+        userId,
+        outfitId: id,
+        localUri: draft.imageUri,
+        mimeType: draft.imageMimeType,
+        width: draft.imageWidth,
+        height: draft.imageHeight,
+        onStage: (stage) => setSaveStatus(stage === 'preparing' ? 'Preparing photo…' : 'Saving outfit…'),
+      });
       await insertOutfit({ id, userId, photoPath, name: draft.name, notes: draft.notes, isFavorite: draft.isFavorite });
       outfitInserted = true;
       await insertOutfitCategories(id, draft.categoryIds);
@@ -116,6 +128,7 @@ export function OutfitProvider({ children }: { children: ReactNode }) {
       throw nextError;
     } finally {
       setIsSaving(false);
+      setSaveStatus(null);
     }
   }, [refresh, userId]);
 
@@ -184,7 +197,7 @@ export function OutfitProvider({ children }: { children: ReactNode }) {
     }
   }, [outfits, refresh]);
 
-  const value = useMemo<OutfitStore>(() => ({ outfits, categories, isLoading, isRefreshing, isSaving, error, refresh, addOutfit, updateOutfit, deleteOutfit, toggleFavorite, addCategory }), [outfits, categories, isLoading, isRefreshing, isSaving, error, refresh, addOutfit, updateOutfit, deleteOutfit, toggleFavorite, addCategory]);
+  const value = useMemo<OutfitStore>(() => ({ outfits, categories, isLoading, isRefreshing, isSaving, saveStatus, error, refresh, addOutfit, updateOutfit, deleteOutfit, toggleFavorite, addCategory }), [outfits, categories, isLoading, isRefreshing, isSaving, saveStatus, error, refresh, addOutfit, updateOutfit, deleteOutfit, toggleFavorite, addCategory]);
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }
 

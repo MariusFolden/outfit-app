@@ -1,12 +1,13 @@
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Link } from 'expo-router';
 import { Outfit } from '../types/outfit';
 import { colors } from '../theme';
+import { OutfitImage } from './OutfitImage';
 
 export function OutfitGrid({ outfits }: { outfits: Outfit[] }) {
   return <View style={styles.grid}>{outfits.map((outfit) => <Link href={{ pathname: '/outfit/[id]', params: { id: outfit.id } }} asChild key={outfit.id}>
     <Pressable style={styles.card}>
-      <Image source={{ uri: outfit.imageUri }} style={styles.image} />
+      <OutfitImage uri={outfit.imageUri} cacheKey={outfit.photoPath} style={styles.image} accessibilityLabel={outfit.name || 'Untitled outfit'} />
       {outfit.isFavorite && <View style={styles.favorite}><Text style={styles.favoriteText}>♥</Text></View>}
       <Text numberOfLines={1} style={styles.name}>{outfit.name || 'Untitled outfit'}</Text>
     </Pressable>

@@ -21,6 +21,8 @@ export type Outfit = {
 export type OutfitDraft = {
   imageUri?: string;
   imageMimeType?: string | null;
+  imageWidth?: number;
+  imageHeight?: number;
   name?: string;
   categoryIds: string[];
   notes?: string;
