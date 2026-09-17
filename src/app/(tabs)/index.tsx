@@ -72,9 +72,9 @@ function LibraryEmpty({ onClearFilters, type }: { onClearFilters: () => void; ty
 
   return <View style={styles.empty}>
     <Text style={styles.emptyIcon}>○</Text>
-    <Text style={styles.emptyTitle}>Your library is ready for its first look.</Text>
-    <Text style={styles.emptyText}>Save an outfit you wore, then find it again whenever you need it.</Text>
-    <Link href="/add" asChild><Pressable style={styles.emptyAction}><Text style={styles.emptyActionText}>Save an outfit</Text></Pressable></Link>
+    <Text style={styles.emptyTitle}>Your outfit library starts here.</Text>
+    <Text style={styles.emptyText}>Save an outfit you’ve worn so you can find it again later.</Text>
+    <Link href="/add" asChild><Pressable accessibilityRole="button" style={styles.emptyAction}><Text style={styles.emptyActionText}>Add your first outfit</Text></Pressable></Link>
   </View>;
 }
 
@@ -108,6 +108,7 @@ export default function LibraryScreen() {
   const renderItem = useCallback(({ item }: ListRenderItemInfo<Outfit>) => <OutfitCard outfit={item} />, []);
   const hasOutfits = outfits.length > 0;
   const initialLoadError = Boolean(error && !hasOutfits && !isLoading);
+  const showLibraryHeader = isLoading || hasOutfits || initialLoadError;
   const listEmpty = isLoading && !hasOutfits
     ? <LibrarySkeleton />
     : initialLoadError
@@ -124,7 +125,7 @@ export default function LibraryScreen() {
     numColumns={2}
     columnWrapperStyle={filtered.length ? styles.column : undefined}
     contentContainerStyle={styles.content}
-    ListHeaderComponent={<LibraryHeader
+    ListHeaderComponent={showLibraryHeader ? <LibraryHeader
       categories={categories}
       category={category}
       favoritesOnly={favoritesOnly}
@@ -135,7 +136,7 @@ export default function LibraryScreen() {
       onRetry={retry}
       onToggleFavorites={() => setFavoritesOnly((current) => !current)}
       query={query}
-    />}
+    /> : null}
     ListEmptyComponent={listEmpty}
     initialNumToRender={8}
     maxToRenderPerBatch={8}

@@ -1,7 +1,7 @@
-import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { AuthError } from '@supabase/supabase-js';
 import { Link } from 'expo-router';
+import { useState } from 'react';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { supabase } from '../../lib/supabase';
 import { colors, spacing } from '../../theme';
 import { PrimaryButton } from '../ui';
@@ -63,12 +63,47 @@ export function AuthForm({ mode }: { mode: Mode }) {
     }
   };
 
-  return <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.page}><ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled"><View style={styles.hero}><Text style={styles.kicker}>PERSONAL OUTFIT LIBRARY</Text><Text style={styles.title}>{isSignUp ? 'Start saving\nyour looks.' : 'Welcome\nback.'}</Text><Text style={styles.sub}>{isSignUp ? 'A private place for every outfit you wore.' : 'Your saved looks are waiting for you.'}</Text></View><View style={styles.form}><AuthField label="EMAIL" value={email} onChangeText={setEmail} autoComplete="email" /><AuthField label="PASSWORD" value={password} onChangeText={setPassword} secure autoComplete={isSignUp ? 'new-password' : 'password'} />{isSignUp && <AuthField label="CONFIRM PASSWORD" value={confirmPassword} onChangeText={setConfirmPassword} secure autoComplete="new-password" />}{errorMessage && <Text style={styles.error}>{errorMessage}</Text>}{notice && <Text style={styles.notice}>{notice}</Text>}<PrimaryButton label={isSubmitting ? 'Please wait...' : isSignUp ? 'Create account' : 'Sign in'} onPress={submit} disabled={isSubmitting} style={styles.submit} /><View style={styles.switchRow}><Text style={styles.switchText}>{isSignUp ? 'Already have an account?' : 'New to Outfit App?'}</Text><Link href={isSignUp ? '/sign-in' : '/sign-up'} asChild><Pressable><Text style={styles.switchLink}>{isSignUp ? 'Sign in' : 'Create one'}</Text></Pressable></Link></View></View></ScrollView></KeyboardAvoidingView>;
+  return <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.page}>
+    <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <Link href="/welcome" asChild><Pressable accessibilityRole="button" style={styles.back}><Text style={styles.backText}>‹ Welcome</Text></Pressable></Link>
+      <View style={styles.hero}>
+        <Text style={styles.kicker}>PERSONAL OUTFIT LIBRARY</Text>
+        <Text style={styles.title}>{isSignUp ? 'Start saving\nyour looks.' : 'Welcome\nback.'}</Text>
+        <Text style={styles.sub}>{isSignUp ? 'A private place for every outfit you wore.' : 'Your saved looks are waiting for you.'}</Text>
+      </View>
+      <View style={styles.form}>
+        <AuthField label="EMAIL" value={email} onChangeText={setEmail} autoComplete="email" />
+        <AuthField label="PASSWORD" value={password} onChangeText={setPassword} secure autoComplete={isSignUp ? 'new-password' : 'password'} />
+        {isSignUp && <AuthField label="CONFIRM PASSWORD" value={confirmPassword} onChangeText={setConfirmPassword} secure autoComplete="new-password" />}
+        {errorMessage && <Text style={styles.error}>{errorMessage}</Text>}
+        {notice && <Text style={styles.notice}>{notice}</Text>}
+        <PrimaryButton label={isSubmitting ? 'Please wait...' : isSignUp ? 'Create account' : 'Sign in'} onPress={submit} disabled={isSubmitting} style={styles.submit} />
+        <View style={styles.switchRow}>
+          <Text style={styles.switchText}>{isSignUp ? 'Already have an account?' : 'New to Outfit Library?'}</Text>
+          <Link href={isSignUp ? '/sign-in' : '/sign-up'} asChild><Pressable><Text style={styles.switchLink}>{isSignUp ? 'Sign in' : 'Create one'}</Text></Pressable></Link>
+        </View>
+      </View>
+    </ScrollView>
+  </KeyboardAvoidingView>;
 }
 
 const styles = StyleSheet.create({
-  page: { backgroundColor: colors.background, flex: 1 }, content: { flexGrow: 1, justifyContent: 'space-between', padding: spacing.lg, paddingBottom: 42, paddingTop: 72 },
-  hero: { paddingTop: 20 }, kicker: { color: colors.accent, fontSize: 11, fontWeight: '700', letterSpacing: 1.4 }, title: { color: colors.text, fontSize: 39, fontWeight: '700', letterSpacing: -1.4, lineHeight: 43, marginTop: 8 }, sub: { color: colors.muted, fontSize: 16, lineHeight: 23, marginTop: 12, maxWidth: 290 },
-  form: { marginTop: 58 }, fieldGroup: { marginBottom: 19 }, fieldLabel: { color: colors.text, fontSize: 11, fontWeight: '700', letterSpacing: 0.8, marginBottom: 8 }, field: { backgroundColor: colors.surface, borderColor: colors.line, borderRadius: 12, borderWidth: 1, color: colors.text, fontSize: 16, height: 54, paddingHorizontal: 15 },
-  error: { color: colors.danger, fontSize: 14, lineHeight: 20, marginBottom: 4 }, notice: { color: colors.accent, fontSize: 14, lineHeight: 20, marginBottom: 4 }, submit: { marginTop: 18 }, switchRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'center', marginTop: 25 }, switchText: { color: colors.muted, fontSize: 14, marginRight: 6 }, switchLink: { color: colors.text, fontSize: 14, fontWeight: '700' },
+  page: { backgroundColor: colors.background, flex: 1 },
+  content: { flexGrow: 1, justifyContent: 'space-between', padding: spacing.lg, paddingBottom: 42, paddingTop: 24 },
+  back: { alignSelf: 'flex-start', justifyContent: 'center', minHeight: 40 },
+  backText: { color: colors.muted, fontSize: 15, fontWeight: '600' },
+  hero: { paddingTop: 20 },
+  kicker: { color: colors.accent, fontSize: 11, fontWeight: '700', letterSpacing: 1.4 },
+  title: { color: colors.text, fontSize: 39, fontWeight: '700', letterSpacing: -1.4, lineHeight: 43, marginTop: 8 },
+  sub: { color: colors.muted, fontSize: 16, lineHeight: 23, marginTop: 12, maxWidth: 290 },
+  form: { marginTop: 58 },
+  fieldGroup: { marginBottom: 19 },
+  fieldLabel: { color: colors.text, fontSize: 11, fontWeight: '700', letterSpacing: 0.8, marginBottom: 8 },
+  field: { backgroundColor: colors.surface, borderColor: colors.line, borderRadius: 12, borderWidth: 1, color: colors.text, fontSize: 16, height: 54, paddingHorizontal: 15 },
+  error: { color: colors.danger, fontSize: 14, lineHeight: 20, marginBottom: 4 },
+  notice: { color: colors.accent, fontSize: 14, lineHeight: 20, marginBottom: 4 },
+  submit: { marginTop: 18 },
+  switchRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'center', marginTop: 25 },
+  switchText: { color: colors.muted, fontSize: 14, marginRight: 6 },
+  switchLink: { color: colors.text, fontSize: 14, fontWeight: '700' },
 });
