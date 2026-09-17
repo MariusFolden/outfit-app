@@ -51,6 +51,8 @@ export function HistoryProvider({ children }: PropsWithChildren) {
   const requestVersion = useRef(0);
   const monthRequests = useRef(new Map<string, Promise<OutfitWear[]>>());
   const lastWornRequests = useRef(new Map<string, Promise<LocalDateKey | null>>());
+  const lastWornRequestTokens = useRef(new Map<string, symbol>());
+  const lastWornMutationVersions = useRef(new Map<string, number>());
 
   const updateMonths = useCallback((updater: (current: Record<string, HistoryMonthState>) => Record<string, HistoryMonthState>) => {
     setMonths((current) => {
@@ -72,6 +74,8 @@ export function HistoryProvider({ children }: PropsWithChildren) {
     requestVersion.current += 1;
     monthRequests.current.clear();
     lastWornRequests.current.clear();
+    lastWornRequestTokens.current.clear();
+    lastWornMutationVersions.current.clear();
     monthsRef.current = {};
     lastWornRef.current = {};
     setMonths({});
@@ -88,6 +92,11 @@ export function HistoryProvider({ children }: PropsWithChildren) {
   }, [outfits, updateLastWorn, updateMonths]);
 
   const getMonthState = useCallback((month: Date) => months[toLocalMonthKey(month)] ?? emptyMonthState, [months]);
+
+  const invalidateLastWornRequest = useCallback((outfitId: string) => {
+    const nextVersion = (lastWornMutationVersions.current.get(outfitId) ?? 0) + 1;
+    lastWornMutationVersions.current.set(outfitId, nextVersion);
+  }, []);
 
   const loadMonth = useCallback(async (month: Date, options: LoadOptions = {}): Promise<OutfitWear[]> => {
     if (!userId) throw new Error('Please sign in again before loading outfit history.');
@@ -149,9 +158,11 @@ export function HistoryProvider({ children }: PropsWithChildren) {
     if (!options.force && existing?.hasLoaded) return existing.wornOn;
 
     const inFlight = lastWornRequests.current.get(outfitId);
-    if (inFlight) return inFlight;
+    if (inFlight && !options.force) return inFlight;
 
     const version = requestVersion.current;
+    const mutationVersion = lastWornMutationVersions.current.get(outfitId) ?? 0;
+    const requestToken = Symbol(outfitId);
     updateLastWorn((current) => ({
       ...current,
       [outfitId]: { ...(current[outfitId] ?? emptyLastWornState), isLoading: true, error: null },
@@ -159,7 +170,7 @@ export function HistoryProvider({ children }: PropsWithChildren) {
 
     const request = loadLastWornDate(userId, outfitId)
       .then((wornOn) => {
-        if (requestVersion.current === version) {
+        if (requestVersion.current === version && (lastWornMutationVersions.current.get(outfitId) ?? 0) === mutationVersion) {
           updateLastWorn((current) => ({
             ...current,
             [outfitId]: { wornOn, hasLoaded: true, isLoading: false, error: null },
@@ -168,7 +179,7 @@ export function HistoryProvider({ children }: PropsWithChildren) {
         return wornOn;
       })
       .catch((error: unknown) => {
-        if (requestVersion.current === version) {
+        if (requestVersion.current === version && (lastWornMutationVersions.current.get(outfitId) ?? 0) === mutationVersion) {
           const message = error instanceof Error ? error.message : 'We could not load when you last wore this outfit. Please try again.';
           updateLastWorn((current) => ({
             ...current,
@@ -178,10 +189,14 @@ export function HistoryProvider({ children }: PropsWithChildren) {
         throw error;
       })
       .finally(() => {
-        lastWornRequests.current.delete(outfitId);
+        if (lastWornRequestTokens.current.get(outfitId) === requestToken) {
+          lastWornRequests.current.delete(outfitId);
+          lastWornRequestTokens.current.delete(outfitId);
+        }
       });
 
     lastWornRequests.current.set(outfitId, request);
+    lastWornRequestTokens.current.set(outfitId, requestToken);
     return request;
   }, [updateLastWorn, userId]);
 
@@ -189,6 +204,7 @@ export function HistoryProvider({ children }: PropsWithChildren) {
     if (!userId) throw new Error('Please sign in again before logging an outfit.');
     const wear = await logOutfitWear({ userId, outfitId, wornOn });
     const monthKey = toLocalMonthKey(fromLocalDateKey(wear.wornOn));
+    invalidateLastWornRequest(outfitId);
 
     updateMonths((current) => {
       const existing = current[monthKey];
@@ -199,21 +215,24 @@ export function HistoryProvider({ children }: PropsWithChildren) {
       };
     });
     updateLastWorn((current) => {
-      const existing = current[outfitId];
-      if (!existing?.hasLoaded) return current;
+      const existing = current[outfitId] ?? emptyLastWornState;
       return {
         ...current,
         [outfitId]: {
           ...existing,
           wornOn: !existing.wornOn || wear.wornOn > existing.wornOn ? wear.wornOn : existing.wornOn,
+          hasLoaded: true,
+          error: null,
         },
       };
     });
+    void loadLastWorn(outfitId, { force: true }).catch(() => undefined);
     return wear;
-  }, [updateLastWorn, updateMonths, userId]);
+  }, [invalidateLastWornRequest, loadLastWorn, updateLastWorn, updateMonths, userId]);
 
   const removeWear = useCallback(async (wear: OutfitWear) => {
     await removeOutfitWear(wear.id);
+    invalidateLastWornRequest(wear.outfitId);
     updateMonths((current) => Object.fromEntries(Object.entries(current).map(([monthKey, state]) => [
       monthKey,
       { ...state, wears: state.wears.filter((item) => item.id !== wear.id) },
@@ -222,7 +241,7 @@ export function HistoryProvider({ children }: PropsWithChildren) {
     if (lastWornRef.current[wear.outfitId]?.wornOn === wear.wornOn) {
       void loadLastWorn(wear.outfitId, { force: true }).catch(() => undefined);
     }
-  }, [loadLastWorn, updateMonths]);
+  }, [invalidateLastWornRequest, loadLastWorn, updateMonths]);
 
   const value = useMemo<HistoryStore>(() => ({
     months,

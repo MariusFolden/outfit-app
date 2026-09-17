@@ -31,7 +31,8 @@
           "cameraPermission": "Outfit App uses your camera so you can capture an outfit you wore.",
           "microphonePermission": false
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ]
   }
 }

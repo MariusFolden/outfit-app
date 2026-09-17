@@ -37,3 +37,11 @@ export function getLocalMonthBounds(month: Date): { start: LocalDateKey; endExcl
     endExclusive: toLocalDateKey(endExclusive),
   };
 }
+
+export function formatLocalDateKey(value: LocalDateKey): string {
+  return fromLocalDateKey(value).toLocaleDateString(undefined, {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
