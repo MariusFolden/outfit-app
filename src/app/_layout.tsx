@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { AuthLoadingScreen } from '../components/auth/AuthLoadingScreen';
 import { OutfitProvider } from '../data/outfitStore';
 import { AuthProvider, useAuth } from '../providers/AuthProvider';
+import { HistoryProvider } from '../providers/HistoryProvider';
 import { colors } from '../theme';
 
 function RootNavigator() {
@@ -24,5 +25,5 @@ function RootNavigator() {
 }
 
 export default function RootLayout() {
-  return <AuthProvider><OutfitProvider><StatusBar style="dark" /><RootNavigator /></OutfitProvider></AuthProvider>;
+  return <AuthProvider><OutfitProvider><HistoryProvider><StatusBar style="dark" /><RootNavigator /></HistoryProvider></OutfitProvider></AuthProvider>;
 }
