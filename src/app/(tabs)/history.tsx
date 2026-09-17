@@ -1,6 +1,6 @@
 import { Link, useFocusEffect } from 'expo-router';
-import { useCallback, useMemo, useRef, useState } from 'react';
-import { Pressable, SectionList, SectionListData, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Alert, Pressable, SectionList, SectionListData, StyleSheet, Text, View } from 'react-native';
 import { HistoryOutfitCard } from '../../components/HistoryOutfitCard';
 import { MonthCalendar } from '../../components/MonthCalendar';
 import { useOutfits } from '../../data/outfitStore';
@@ -30,11 +30,15 @@ function formatDateHeading(dateKey: LocalDateKey) {
 
 export default function HistoryScreen() {
   const { outfits } = useOutfits();
-  const { getMonthState, historyPresence, loadHistoryPresence, loadMonth } = useHistory();
+  const { getMonthState, historyPresence, loadHistoryPresence, loadMonth, removeWear } = useHistory();
   const [displayedMonth, setDisplayedMonth] = useState(() => startOfLocalMonth());
+  const [failedWear, setFailedWear] = useState<OutfitWear | null>(null);
   const [selectedDateKey, setSelectedDateKey] = useState<LocalDateKey | null>(null);
+  const [removalError, setRemovalError] = useState<string | null>(null);
+  const [removingWearId, setRemovingWearId] = useState<string | null>(null);
   const listRef = useRef<SectionList<HistoryFeedItem, HistorySection>>(null);
   const pendingSectionIndex = useRef<number | null>(null);
+  const removingWearIdRef = useRef<string | null>(null);
   const scrollRetryAttempt = useRef(0);
   const monthState = getMonthState(displayedMonth);
   const currentMonth = startOfLocalMonth();
@@ -71,6 +75,8 @@ export default function HistoryScreen() {
   }, [loadDisplayedHistory]));
 
   const changeMonth = (amount: number) => {
+    setFailedWear(null);
+    setRemovalError(null);
     setSelectedDateKey(null);
     setDisplayedMonth((month) => shiftLocalMonth(month, amount));
   };
@@ -79,6 +85,31 @@ export default function HistoryScreen() {
     void loadMonth(displayedMonth, { force: true }).catch(() => undefined);
     void loadHistoryPresence({ force: true }).catch(() => undefined);
   }, [displayedMonth, loadHistoryPresence, loadMonth]);
+
+  const removeHistoryWear = useCallback(async (wear: OutfitWear) => {
+    if (removingWearIdRef.current) return;
+    removingWearIdRef.current = wear.id;
+    setRemovalError(null);
+    setFailedWear(null);
+    setRemovingWearId(wear.id);
+    try {
+      await removeWear(wear);
+    } catch {
+      setFailedWear(wear);
+      setRemovalError('We couldn’t remove this history entry. Please try again.');
+    } finally {
+      removingWearIdRef.current = null;
+      setRemovingWearId(null);
+    }
+  }, [removeWear]);
+
+  const confirmRemoveHistoryWear = useCallback((wear: OutfitWear) => {
+    if (removingWearIdRef.current) return;
+    Alert.alert('Remove this history entry?', 'This will not delete the outfit.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Remove', style: 'destructive', onPress: () => { void removeHistoryWear(wear); } },
+    ]);
+  }, [removeHistoryWear]);
 
   const scrollToSection = useCallback((sectionIndex: number) => {
     listRef.current?.scrollToLocation({ animated: true, itemIndex: 0, sectionIndex, viewOffset: 0 });
@@ -113,7 +144,11 @@ export default function HistoryScreen() {
   const isRefreshing = monthState.isRefreshing || historyPresence.isLoading && historyPresence.hasLoaded;
   const hasFeedEntries = sections.length > 0;
 
-  const renderItem = useCallback(({ item }: { item: HistoryFeedItem }) => <HistoryOutfitCard outfit={item.outfit} />, []);
+  useEffect(() => {
+    if (selectedDateKey && !markedDateKeys.has(selectedDateKey)) setSelectedDateKey(null);
+  }, [markedDateKeys, selectedDateKey]);
+
+  const renderItem = useCallback(({ item }: { item: HistoryFeedItem }) => <HistoryOutfitCard isRemoving={removingWearId !== null} isRemovingThis={removingWearId === item.wear.id} outfit={item.outfit} onRemoveRequest={confirmRemoveHistoryWear} wear={item.wear} />, [confirmRemoveHistoryWear, removingWearId]);
   const renderSectionHeader = useCallback(({ section }: { section: HistorySection }) => <Text style={styles.dateHeading}>{section.title}</Text>, []);
 
   return <SectionList<HistoryFeedItem, HistorySection>
@@ -138,7 +173,7 @@ export default function HistoryScreen() {
       monthLabel={formatLocalMonth(displayedMonth)}
       onRetry={retry}
     />}
-    ListFooterComponent={hasFeedEntries && hasError ? <RefreshError onRetry={retry} /> : null}
+    ListFooterComponent={hasFeedEntries && (hasError || removalError) ? <HistoryFeedback message={removalError ?? 'We couldn’t refresh your history.'} onRetry={removalError && failedWear ? () => { void removeHistoryWear(failedWear); } : retry} /> : null}
     contentContainerStyle={styles.content}
     initialNumToRender={4}
     maxToRenderPerBatch={4}
@@ -207,8 +242,12 @@ function HistoryEmptyState({ hasError, hasNoHistory, hasNoMonthHistory, isLoadin
 }
 
 function RefreshError({ onRetry }: { onRetry: () => void }) {
+  return <HistoryFeedback message="We couldn’t refresh your history." onRetry={onRetry} />;
+}
+
+function HistoryFeedback({ message, onRetry }: { message: string; onRetry: () => void }) {
   return <View style={styles.status}>
-    <Text style={styles.statusTitle}>We couldn’t refresh your history.</Text>
+    <Text style={styles.statusTitle}>{message}</Text>
     <Pressable accessibilityRole="button" onPress={onRetry}><Text style={styles.retry}>Try again</Text></Pressable>
   </View>;
 }
