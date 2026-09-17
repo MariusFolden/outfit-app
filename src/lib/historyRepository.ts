@@ -43,6 +43,18 @@ export function isDuplicateWearError(error: unknown) {
   return error instanceof HistoryRepositoryError && error.code === '23505';
 }
 
+export async function loadHistoryPresence(userId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('outfit_wears')
+    .select('id')
+    .eq('user_id', userId)
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw databaseError(error);
+  return Boolean(data?.id);
+}
+
 export async function loadWearsForMonth(userId: string, month: Date): Promise<OutfitWear[]> {
   const { start, endExclusive } = getLocalMonthBounds(month);
   const { data, error } = await supabase

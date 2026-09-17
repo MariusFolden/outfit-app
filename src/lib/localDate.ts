@@ -28,6 +28,33 @@ export function toLocalMonthKey(date: Date): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}`;
 }
 
+export function startOfLocalMonth(date: Date = new Date()): Date {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+export function daysInLocalMonth(month: Date): number {
+  return new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
+}
+
+export function mondayFirstLeadingDays(month: Date): number {
+  return (new Date(month.getFullYear(), month.getMonth(), 1).getDay() + 6) % 7;
+}
+
+export function localDateKeyForMonthDay(month: Date, day: number): LocalDateKey {
+  if (!Number.isInteger(day) || day < 1 || day > daysInLocalMonth(month)) {
+    throw new Error('Expected a valid day in the displayed month.');
+  }
+  return toLocalDateKey(new Date(month.getFullYear(), month.getMonth(), day));
+}
+
+export function shiftLocalMonth(month: Date, amount: number): Date {
+  return new Date(month.getFullYear(), month.getMonth() + amount, 1);
+}
+
+export function isSameLocalMonth(left: Date, right: Date): boolean {
+  return left.getFullYear() === right.getFullYear() && left.getMonth() === right.getMonth();
+}
+
 export function getLocalMonthBounds(month: Date): { start: LocalDateKey; endExclusive: LocalDateKey } {
   const start = new Date(month.getFullYear(), month.getMonth(), 1);
   const endExclusive = new Date(month.getFullYear(), month.getMonth() + 1, 1);
@@ -42,6 +69,13 @@ export function formatLocalDateKey(value: LocalDateKey): string {
   return fromLocalDateKey(value).toLocaleDateString(undefined, {
     month: 'long',
     day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+export function formatLocalMonth(month: Date): string {
+  return startOfLocalMonth(month).toLocaleDateString(undefined, {
+    month: 'long',
     year: 'numeric',
   });
 }

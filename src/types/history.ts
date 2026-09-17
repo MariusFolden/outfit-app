@@ -22,3 +22,10 @@ export type LastWornState = {
   isLoading: boolean;
   error: string | null;
 };
+
+export type HistoryPresenceState = {
+  hasHistory: boolean | null;
+  hasLoaded: boolean;
+  isLoading: boolean;
+  error: string | null;
+};
