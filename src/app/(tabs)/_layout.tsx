@@ -7,8 +7,9 @@ const icon = (symbol: string, active: boolean) => <View style={symbol === '+' ? 
 export default function TabsLayout() {
   return <Tabs screenOptions={{ headerStyle: { backgroundColor: colors.background }, headerShadowVisible: false, headerTitleStyle: { color: colors.text, fontWeight: '700' }, sceneStyle: { backgroundColor: colors.background }, tabBarActiveTintColor: colors.text, tabBarInactiveTintColor: colors.muted, tabBarStyle: { backgroundColor: colors.background, borderTopColor: colors.line, height: 76, paddingTop: 8 }, tabBarLabelStyle: { fontSize: 11, fontWeight: '600' } }}>
     <Tabs.Screen name="index" options={{ title: 'Library', tabBarIcon: ({ focused }) => icon('▦', focused) }} />
-    <Tabs.Screen name="discover" options={{ title: 'Discover', tabBarIcon: ({ focused }) => icon('✦', focused) }} />
+    <Tabs.Screen name="history" options={{ title: 'History', tabBarIcon: ({ focused }) => icon('▤', focused) }} />
     <Tabs.Screen name="add" options={{ title: 'Add', tabBarIcon: () => icon('+', true) }} />
+    <Tabs.Screen name="discover" options={{ title: 'Discover', tabBarIcon: ({ focused }) => icon('✦', focused) }} />
     <Tabs.Screen name="profile" options={{ title: 'Profile', tabBarIcon: ({ focused }) => icon('◯', focused) }} />
   </Tabs>;
 }
